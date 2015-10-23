@@ -130,7 +130,7 @@ ldi r17,0xFF ;
 ldi xl,0x00 ; nizsza czesc adresu - XL to rejest r28 (r28 i r27 to rejest X ) 
 ldi xh,0x00 ; wyzsza czesc adresu 
 ldi r20,0x17 ; dana testsowa
-ldi r21,0x00 ; rejest do odczytu wartsci eeprom
+ldi r21,0xFF ; rejest do odczytu wartsci eeprom - ustawianie na FF, zeby pozniej przy czytaniu poprzednia wartosc nie byla zerem
 
 out DDRA,r16 ; PORTA - jako wejsciowy
 out PINA,r17
@@ -171,16 +171,42 @@ cpi r16, 0xFF ; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie n
 breq CZEKAJ_NA_NACISNIECIE ; równe to powrót do pêtli odczytu
 rjmp CZEKAJ_NA_PUSZCZENIE; skok do petli czekania na puszczenie przycisku
 
-CZYTAJ_PAMIEC:
+/*CZYTAJ_PAMIEC_PIERWSZY_ELEMENT:
 ; z racji ze sie nie udalo zrbic tak, zeby moc od razu pisac i czytac pamiec albo juz nie mysle 
 ; to po prostu nie sprawdzam czy jest zajeta
 ;sbic eecr, eepe ;sprawdzanie czy pameic jest zajeta
 ;rjmp CZYTAJ_PAMIEC
-out eearh, XH ; set-up address
-out eearl, XL 
-sbi eecr, eere ; pozowolenie odczytu
-in r21, eedr ; czytanie danych
+;out eearh, XH ; set-up address
+;out eearl, XL 
+;sbi eecr, eere ; pozowolenie odczytu
+;in r21, eedr ; czytanie danych
+;in r20, eedr ; dwa razy ta sama dana, zeby pozniej mozna bylo porownac
+;rjmp WYPISZ_DANE*/
+
+CZYTAJ_PAMIEC:
+sbic eecr, eepe ; sprawdzenie czy pamiec zajeta w sumie
+rjmp CZYTAJ_PAMIEC
+out eearh, xh ;adresik
+out eearl, xl
+sbi eecr, eere ; czytanie
+mov r20, r21 ; wartosc poptrzednia do r20
+in 21, eedr
+cp r20, r21
+brne ZWIEKSZANIE_ADRESU
+cpi r21, 0x00
+breq ZERUJ_DIODY ; koniec pamieci
+
+ZWIEKSZANIE_ADRESU:
+cpi xl, 0xFF ; sprawdzenie czy nizsze bity adresu sie przepelnily
+breq INKREMENTUJ_WYZSZE
+inc xl ; adres ++
 rjmp WYPISZ_DANE
+INKREMENTUJ_WYZSZE:
+ldi xl, 0x00 ; wyzerowanie nizszych
+inc xh ; 
+rjmp WYPISZ_DANE
+
+
 
 ;------------------------------------------------------------------------------
 ; Program end - Ending loop
