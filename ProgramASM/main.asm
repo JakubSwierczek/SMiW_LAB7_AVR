@@ -142,14 +142,14 @@ out PORTB,r16 ; PORTB - wyjscie w stan niski by diody nie œwieci³y
 ; F2. Load initial values of index registers 
 ;  Z, X, Y 
 
-MOZE_ZAPISZEMY_COS_NA_POCZATKU_DO_PAMIECI:
-sbic EECR,EEPE ; czekamy az poptrzebnie wpisanie sie nie skonczy, w sumie mogloby byc nie potrzebne wed³ug mnie
-rjmp MOZE_ZAPISZEMY_COS_NA_POCZATKU_DO_PAMIECI
-out EEARH, XH ; bity wyzsze adresu
-out EEARL, XL ; bity nizsze adresu
-out EEDR,r20 ; a te dane testowe wpiszemy pod ten adres
-sbi EECR,EEMPE ; trzeba zapisac wynik (tak mi sie wydaje, ze do tego sluzy)
-sbi EECR,EEPE ; je¿eli nie ustawimy tych dwoch bitow w eeepromie to nasza dana sie nie zapisze
+;MOZE_ZAPISZEMY_COS_NA_POCZATKU_DO_PAMIECI:
+;sbic EECR,EEPE ; czekamy az poptrzebnie wpisanie sie nie skonczy, w sumie mogloby byc nie potrzebne wed³ug mnie
+;rjmp MOZE_ZAPISZEMY_COS_NA_POCZATKU_DO_PAMIECI
+;out EEARH, XH ; bity wyzsze adresu
+;out EEARL, XL ; bity nizsze adresu
+;out EEDR,r20 ; a te dane testowe wpiszemy pod ten adres
+;sbi EECR,EEMPE ; trzeba zapisac wynik (tak mi sie wydaje, ze do tego sluzy)
+;sbi EECR,EEPE ; je¿eli nie ustawimy tych dwoch bitow w eeepromie to nasza dana sie nie zapisze
 ; to sa jakies bity odpowiedzialne za czytanie, przy czytaniu sie je powinno sprawdzac zeby nie czytac jak sie pisze
 ;cbi EECR,EEPE ; probowalem wyzerowac ten bit, tak aby mozna bylo spokojnie przeczytac pamiec
 
@@ -190,11 +190,11 @@ out eearh, xh ;adresik
 out eearl, xl
 sbi eecr, eere ; czytanie
 mov r20, r21 ; wartosc poptrzednia do r20
-in 21, eedr
+in r21, eedr
 cp r20, r21
 brne ZWIEKSZANIE_ADRESU
 cpi r21, 0x00
-breq ZERUJ_DIODY ; koniec pamieci
+breq End ; koniec pamieci
 
 ZWIEKSZANIE_ADRESU:
 cpi xl, 0xFF ; sprawdzenie czy nizsze bity adresu sie przepelnily
@@ -205,8 +205,6 @@ INKREMENTUJ_WYZSZE:
 ldi xl, 0x00 ; wyzerowanie nizszych
 inc xh ; 
 rjmp WYPISZ_DANE
-
-
 
 ;------------------------------------------------------------------------------
 ; Program end - Ending loop
