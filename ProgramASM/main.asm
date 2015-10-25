@@ -125,16 +125,11 @@ out SPL, R16
 ; Main program code place here
 ; 1. Place here code related to initialization of ports and interrupts
 
-ldi r16,0x00 ;
-ldi r17,0xFF ;
-ldi xl,0x00 ; nizsza czesc adresu - XL to rejest r28 (r28 i r27 to rejest X ) 
-ldi xh,0x00 ; wyzsza czesc adresu 
-ldi r20,0x17 ; dana testsowa
-ldi r21,0xFF ; rejest do odczytu wartsci eeprom - ustawianie na FF, zeby pozniej przy czytaniu poprzednia wartosc nie byla zerem
+ldi r16,0x00
+ldi r17,0xFF
 
 out DDRA,r16 ; PORTA - jako wejsciowy
-out PINA,r17
-;out PORTA,r17 ; PORTA - wejscia PULL-UP
+out PORTA,r17 ; PORTA - wejscia PULL-UP
 out DDRB,r17 ; PORTB - jako wyjscie
 out PORTB,r16 ; PORTB - wyjscie w stan niski by diody nie œwieci³y
 
@@ -142,48 +137,16 @@ out PORTB,r16 ; PORTB - wyjscie w stan niski by diody nie œwieci³y
 ; F2. Load initial values of index registers 
 ;  Z, X, Y 
 
-;MOZE_ZAPISZEMY_COS_NA_POCZATKU_DO_PAMIECI:
-;sbic EECR,EEPE ; czekamy az poptrzebnie wpisanie sie nie skonczy, w sumie mogloby byc nie potrzebne wed³ug mnie
-;rjmp MOZE_ZAPISZEMY_COS_NA_POCZATKU_DO_PAMIECI
-;out EEARH, XH ; bity wyzsze adresu
-;out EEARL, XL ; bity nizsze adresu
-;out EEDR,r20 ; a te dane testowe wpiszemy pod ten adres
-;sbi EECR,EEMPE ; trzeba zapisac wynik (tak mi sie wydaje, ze do tego sluzy)
-;sbi EECR,EEPE ; je¿eli nie ustawimy tych dwoch bitow w eeepromie to nasza dana sie nie zapisze
-; to sa jakies bity odpowiedzialne za czytanie, przy czytaniu sie je powinno sprawdzac zeby nie czytac jak sie pisze
-;cbi EECR,EEPE ; probowalem wyzerowac ten bit, tak aby mozna bylo spokojnie przeczytac pamiec
-
+ldi xl,0x00 ; nizsza czesc adresu - XL to rejest r28 (r28 i r27 to rejest X ) 
+ldi xh,0x00 ; wyzsza czesc adresu 
+ldi r21,0xFF ; rejestr do odczytu wartsci eeprom - ustawianie na FF, zeby pozniej przy czytaniu poprzednia wartosc nie byla zerem
 
 CZEKAJ_NA_NACISNIECIE:
 in r16, PINA ; wycztanie stanu portu A z przyciskami do rejestru
 cpi r16, 0xFF ; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie naciœniêty
 breq CZEKAJ_NA_NACISNIECIE ; równe to powrót do pêtli odczytu
-ldi r17, 0x00
-ldi r18, 0x00
-;in r18, 0x00		 ; gdy nie, to przycisk wciœniêty i kopiujemy bajt
-rjmp CZYTAJ_PAMIEC
-WYPISZ_DANE:
-out portb, r21		 
 
-CZEKAJ_NA_PUSZCZENIE:
-in r16, PINA ; wycztanie stanu portu A z przyciskami do rejestru
-cpi r16, 0xFF ; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie naciœniêty
-breq CZEKAJ_NA_NACISNIECIE ; równe to powrót do pêtli odczytu
-rjmp CZEKAJ_NA_PUSZCZENIE; skok do petli czekania na puszczenie przycisku
-
-/*CZYTAJ_PAMIEC_PIERWSZY_ELEMENT:
-; z racji ze sie nie udalo zrbic tak, zeby moc od razu pisac i czytac pamiec albo juz nie mysle 
-; to po prostu nie sprawdzam czy jest zajeta
-;sbic eecr, eepe ;sprawdzanie czy pameic jest zajeta
-;rjmp CZYTAJ_PAMIEC
-;out eearh, XH ; set-up address
-;out eearl, XL 
-;sbi eecr, eere ; pozowolenie odczytu
-;in r21, eedr ; czytanie danych
-;in r20, eedr ; dwa razy ta sama dana, zeby pozniej mozna bylo porownac
-;rjmp WYPISZ_DANE*/
-
-CZYTAJ_PAMIEC:
+CZYTAJ_PAMIEC: ; przycisk wciœniêty, odczytujemy pamiêc eeprom
 sbic eecr, eepe ; sprawdzenie czy pamiec zajeta w sumie
 rjmp CZYTAJ_PAMIEC
 out eearh, xh ;adresik
@@ -198,13 +161,21 @@ breq End ; koniec pamieci
 
 ZWIEKSZANIE_ADRESU:
 cpi xl, 0xFF ; sprawdzenie czy nizsze bity adresu sie przepelnily
-breq INKREMENTUJ_WYZSZE
+breq INKREMENTUJ_WYZSZE ; jeœli nie - normalna inkrementacja
 inc xl ; adres ++
 rjmp WYPISZ_DANE
-INKREMENTUJ_WYZSZE:
+INKREMENTUJ_WYZSZE: ; gdy tak - inkrementujemy wy¿sz¹ po³ówkê
 ldi xl, 0x00 ; wyzerowanie nizszych
-inc xh ; 
-rjmp WYPISZ_DANE
+inc xh ; adres ++
+
+WYPISZ_DANE:
+out portb, r21 ; zawartoœæ odczytanego bajtu z eepromu na portB		 
+
+CZEKAJ_NA_PUSZCZENIE:
+in r16, PINA ; wycztanie stanu portu A z przyciskami do rejestru
+cpi r16, 0xFF ; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie naciœniêty
+breq CZEKAJ_NA_NACISNIECIE ; równe to powrót do pêtli oczekiwania na ponowne naciœniêcie przycisku
+rjmp CZEKAJ_NA_PUSZCZENIE; skok do petli czekania na puszczenie przycisku
 
 ;------------------------------------------------------------------------------
 ; Program end - Ending loop
@@ -216,7 +187,7 @@ rjmp END
 ; Table Declaration -  place here test values
 ; Test with different table values and different begin addresses of table (als above 0x8000)
 ;
-;ROMTAB: .db 0xffh
+ROMTAB: .db 0xff
 .EXIT
 ;------------------------------------------------------------------------------
 

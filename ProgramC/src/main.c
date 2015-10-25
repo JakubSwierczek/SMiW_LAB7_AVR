@@ -44,10 +44,10 @@ const uint8_t PROGMEM romtab[10] = {0xF0, 0x10, 0xFF, 0x11, 0x00, 0x01, 0xFA, 0x
 uint8_t czytaj_pamiec(const int offset, uint8_t* poprzednia_wartosc, uint8_t* obecna_wartosc)
 {
 	*poprzednia_wartosc = *obecna_wartosc;
-	*obecna_wartosc = romtab[offset];
-	if(*obecna_wartosc == *poprzednia_wartosc && *obecna_wartosc == 0)
-		return 0x00;
-	return 0xFF;
+	*obecna_wartosc = eeprom_read_byte(offset); //odczyt komórki pamiêci
+	if(*obecna_wartosc == *poprzednia_wartosc && *obecna_wartosc == 0) //gdy mamy dwa zera w tablicy
+		return 0x00; //koniec tablicy
+	return 0xFF; //poprawny odczyt
 	
 }
 
@@ -62,11 +62,11 @@ int main(void)
 	uint8_t poprzednia_wartosc = 0x00;
 	uint8_t obecna_wartosc = 0xFF;
 	DDRA = 0x00; // wejscie
-	DDRB = 0x00; // wyjscie
+	DDRB = 0xFF; // wyjscie
 	PORTA = 0xFF; // + pullup-y
-	PINA = 0xFF;
-	PORTB = 0x00;
-	PINB = 0x00;
+	//PINA = 0xFF;
+	PORTB = 0x00; //diody nie œwiec¹
+	//PINB = 0x00;
 	
 	while(1)
 	{
@@ -74,9 +74,14 @@ int main(void)
 		{
 			czy_wpisac = czytaj_pamiec(offset, &poprzednia_wartosc, &obecna_wartosc);
 			if(czy_wpisac == 0xFF)
+			{
+				offset++; //poprawna wartoœæ odczytana, przesuwamy siê na kolejny bajt tablicy
 				wypisz_dane(obecna_wartosc);
+			}
 			else
-				break;
+				return 0; //wyjscie z programu - koniec dzia³ania
+				
+			while (PINA != 0xFF) {} //dopóki któryœ przycisk naciœniêty, czekamy na puszczenie go
 		}	
 	}
 	
