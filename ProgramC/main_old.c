@@ -39,14 +39,14 @@
 void wypisz_dane(uint8_t dana);
 uint8_t czytaj_pamiec(const int offset, uint8_t* poprzednia_wartosc, uint8_t* obecna_wartosc);
 const uint8_t PROGMEM romtab[10] = {0xF0, 0x10, 0xFF, 0x11, 0x00, 0x01, 0xFA, 0x23, 0x00, 0x00};
-
-
+	
+	
 uint8_t czytaj_pamiec(const int offset, uint8_t* poprzednia_wartosc, uint8_t* obecna_wartosc)
 {
 	*poprzednia_wartosc = *obecna_wartosc;
-	*obecna_wartosc = pgm_read_byte(&(romtab[offset])); //odczyt komórki pamiêci
+	*obecna_wartosc = eeprom_read_byte(offset); //odczyt komórki pamiêci
 	if(*obecna_wartosc == *poprzednia_wartosc && *obecna_wartosc == 0) //gdy mamy dwa zera w tablicy
-	return 0x00; //koniec tablicy
+		return 0x00; //koniec tablicy
 	return 0xFF; //poprawny odczyt
 	
 }
@@ -79,13 +79,13 @@ int main(void)
 				wypisz_dane(obecna_wartosc);
 			}
 			else
-			return 0; //wyjscie z programu - koniec dzia³ania
-			
+				return 0; //wyjscie z programu - koniec dzia³ania
+				
 			while (PINA != 0xFF) {} //dopóki któryœ przycisk naciœniêty, czekamy na puszczenie go
-		}
+		}	
 	}
 	
 	
 	return 0;
 }
-
+	

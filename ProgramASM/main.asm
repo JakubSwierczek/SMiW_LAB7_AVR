@@ -136,9 +136,8 @@ out PORTB,r16 ; PORTB - wyjscie w stan niski by diody nie œwieci³y
 ;------------------------------------------------------------------------------
 ; F2. Load initial values of index registers 
 ;  Z, X, Y 
-
-ldi xl,0x00 ; nizsza czesc adresu - XL to rejest r28 (r28 i r27 to rejest X ) 
-ldi xh,0x00 ; wyzsza czesc adresu 
+ldi zl, low(ROMTAB << 1)
+ldi zh, high(ROMTAB << 1)
 ldi r21,0xFF ; rejestr do odczytu wartsci eeprom - ustawianie na FF, zeby pozniej przy czytaniu poprzednia wartosc nie byla zerem
 
 CZEKAJ_NA_NACISNIECIE:
@@ -147,26 +146,13 @@ cpi r16, 0xFF ; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie n
 breq CZEKAJ_NA_NACISNIECIE ; równe to powrót do pêtli odczytu
 
 CZYTAJ_PAMIEC: ; przycisk wciœniêty, odczytujemy pamiêc eeprom
-sbic eecr, eepe ; sprawdzenie czy pamiec zajeta w sumie
-rjmp CZYTAJ_PAMIEC
-out eearh, xh ;adresik
-out eearl, xl
-sbi eecr, eere ; czytanie
 mov r20, r21 ; wartosc poptrzednia do r20
-in r21, eedr
-cp r20, r21
-brne ZWIEKSZANIE_ADRESU
-cpi r21, 0x00
-breq End ; koniec pamieci
+lpm r21, Z+ ; czytanie tablicy oraz inkrementacja wskaznika
 
-ZWIEKSZANIE_ADRESU:
-cpi xl, 0xFF ; sprawdzenie czy nizsze bity adresu sie przepelnily
-breq INKREMENTUJ_WYZSZE ; jeœli nie - normalna inkrementacja
-inc xl ; adres ++
-rjmp WYPISZ_DANE
-INKREMENTUJ_WYZSZE: ; gdy tak - inkrementujemy wy¿sz¹ po³ówkê
-ldi xl, 0x00 ; wyzerowanie nizszych
-inc xh ; adres ++
+cp r20, r21 ; czy s¹ takie same
+brne WYPISZ_DANE ; jezeli nie to wypisujemy dane
+cpi r21, 0x00 ; jeœli s¹ takie same to czy nie sa zerami
+breq End ; koniec pamieci
 
 WYPISZ_DANE:
 out portb, r21 ; zawartoœæ odczytanego bajtu z eepromu na portB		 
@@ -187,7 +173,7 @@ rjmp END
 ; Table Declaration -  place here test values
 ; Test with different table values and different begin addresses of table (als above 0x8000)
 ;
-ROMTAB: .db 0xff
+ROMTAB: .db 0xff, 0xf0, 0x10, 0x00, 0x00
 .EXIT
 ;------------------------------------------------------------------------------
 
