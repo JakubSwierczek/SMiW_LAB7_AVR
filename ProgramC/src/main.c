@@ -22,8 +22,14 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 
+//prototypy funkcji
+void wypisz_dane(uint8_t dana);
+uint8_t czytaj_pamiec(const int offset, uint8_t* poprzednia_wartosc, uint8_t* obecna_wartosc);
+
+//testowa tablica w ROMie
 const uint8_t PROGMEM romtab[10] = {0xF0, 0x10, 0xFF, 0x11, 0x00, 0x01, 0xFA, 0x23, 0x00, 0x00};
 
+//odczytuje bajt pamiêci i porównuje z poprzednim, sprawdzaj¹c czy to wartownicy (koniec tablicy)
 uint8_t czytaj_pamiec(const int offset, uint8_t* poprzednia_wartosc, uint8_t* obecna_wartosc)
 {
 	*poprzednia_wartosc = *obecna_wartosc;
@@ -34,14 +40,15 @@ uint8_t czytaj_pamiec(const int offset, uint8_t* poprzednia_wartosc, uint8_t* ob
 	
 }
 
+//wypisanie bajtu na diody
 void wypisz_dane(uint8_t dana)
 {
 	PORTB = dana;
 }
+
+//g³ówna pêtla programu
 int main(void)
 {
-	int offset = 0;
-	uint8_t czy_wpisac = 0x00;
 	uint8_t poprzednia_wartosc = 0x00;
 	uint8_t obecna_wartosc = 0xFF;
 	DDRA = 0x00; // port A jako wejscie
@@ -51,7 +58,7 @@ int main(void)
 	
 	while(1)
 	{
-		if(PINA != 0xFF)
+		if(PINA != 0xFF) //je¿eli dowolny przycisk na porcie A jest wciœniêty
 		{
 			//dopóki odczyt poprawny (nie jest to wartownik), to wypisz dane i przesuñ wskaŸnik na kolejny bajt tablicy
 			for (int offset = 0; czytaj_pamiec(offset, &poprzednia_wartosc, &obecna_wartosc); offset++)
