@@ -1,19 +1,24 @@
- ;//////////////////////////////////////////////////////////////////////////////
-; Laboratory AVR Microcontrollers Part1 
+//////////////////////////////////////////////////////////////////////////////
+/*; Laboratory AVR Microcontrollers Part1
 ; Program template for lab 7
-; Authors: Micha³ Lytek & Jakub Swierczek
 ;
-; Group: 5
-; Section: 4
+; Authors:	Micha³ Lytek
+;			Jakub Œwierczek
+; Group:	5
+; Section:	4
 ;
-; Task: 
+; Task:		Kopiowanie z ROM na diody
+; Todo:	
+;	- ATmega2560 16 MHz	
+;	- przyciski na porcie A zwieraj¹ do masy
+;	- diody na porcie B przez rezystor do masy
+;	- na koñcu tablicy wartownik - dwie wartoœci 0x00
+;	- gdy wciœniêty dowolny przycisk -> wyœwietlanie zawartoœci tablicy na diodach (w pêtli)
 ;
-; Todo:
-;
-;
-; Version: 0.5b
+; Version: 1.1
 ;//////////////////////////////////////////////////////////////////////////////
-.nolist ;quartz assumption 4Mhz
+*/
+.nolist ;quartz assumption 16 MHz
 .include "2560def.inc"
 .list
 
@@ -125,43 +130,43 @@ out SPL, R16
 ; Main program code place here
 ; 1. Place here code related to initialization of ports and interrupts
 
-ldi r16,0x00
-ldi r17,0xFF
+clr r16				; ustawienie 0x00 w rejestrze
+ser r17				; ustawienie 0xFF w rejestrze
 
-out DDRA,r16 ; PORTA - jako wejsciowy
-out PORTA,r17 ; PORTA - wejscia PULL-UP
-out DDRB,r17 ; PORTB - jako wyjscie
-out PORTB,r16 ; PORTB - wyjscie w stan niski by diody nie œwieci³y
+out DDRA, r16		; PORTA - jako wejsciowy
+out PORTA, r17		; PORTA - wejscia PULL-UP
+out DDRB, r17		; PORTB - jako wyjscie
+out PORTB, r16		; PORTB - wyjscie w stan niski by diody nie œwieci³y
 
 ;------------------------------------------------------------------------------
 ; F2. Load initial values of index registers 
 ;  Z, X, Y 
+					; ³adowanie rejestru Z adresem tablicy
 ldi zl, low(ROMTAB << 1)
 ldi zh, high(ROMTAB << 1)
-ldi r21,0xFF ; rejestr do odczytu wartsci eeprom - ustawianie na FF, zeby pozniej przy czytaniu poprzednia wartosc nie byla zerem
+ldi r21, 0xFF		; rejestr do odczytu wartsci eeprom - ustawianie na FF, zeby pozniej przy czytaniu poprzednia wartosc nie byla zerem
+
+;------------------------------------------------------------------------------
+; Kod g³ównej czêœci programu
+;------------------------------------------------------------------------------
 
 CZEKAJ_NA_NACISNIECIE:
-in r16, PINA ; wycztanie stanu portu A z przyciskami do rejestru
-cpi r16, 0xFF ; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie naciœniêty
-breq CZEKAJ_NA_NACISNIECIE ; równe to powrót do pêtli odczytu
+in r16, PINA		; wycztanie stanu portu A z przyciskami do rejestru
+cpi r16, 0xFF		; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie naciœniêty
+breq CZEKAJ_NA_NACISNIECIE	; równe to powrót do pêtli odczytu
 
-CZYTAJ_PAMIEC: ; przycisk wciœniêty, odczytujemy pamiêc eeprom
-mov r20, r21 ; wartosc poptrzednia do r20
-lpm r21, Z+ ; czytanie tablicy oraz inkrementacja wskaznika
+CZYTAJ_PAMIEC:		; przycisk wciœniêty, odczytujemy pamiêc eeprom
+mov r20, r21		; wartosc poptrzednia do r20
+lpm r21, Z+			; czytanie tablicy oraz inkrementacja wskaznika
 
-cp r20, r21 ; czy s¹ takie same
-brne WYPISZ_DANE ; jezeli nie to wypisujemy dane
-cpi r21, 0x00 ; jeœli s¹ takie same to czy nie sa zerami
-breq End ; koniec pamieci
+cp r20, r21			; sprawdzanie czy obecna i poprzednia wartoœæ s¹ takie same
+brne WYPISZ_DANE	; jezeli nie to wypisujemy dane
+cpi r21, 0x00		; jeœli s¹ takie same to czy nie sa zerami
+breq End			; napotkanie wartownika -> koniec programu
 
 WYPISZ_DANE:
-out portb, r21 ; zawartoœæ odczytanego bajtu z eepromu na portB		 
-
-CZEKAJ_NA_PUSZCZENIE:
-in r16, PINA ; wycztanie stanu portu A z przyciskami do rejestru
-cpi r16, 0xFF ; porównanie bitów w porcie z 1111 1111 - ¿aden z przycisków nie naciœniêty
-breq CZEKAJ_NA_NACISNIECIE ; równe to powrót do pêtli oczekiwania na ponowne naciœniêcie przycisku
-rjmp CZEKAJ_NA_PUSZCZENIE; skok do petli czekania na puszczenie przycisku
+out PORTB, r21		; zawartoœæ odczytanego bajtu z tablicy na port B (diody)	 
+rjmp CZYTAJ_PAMIEC	; pêtla - skok do odczytywania bajtów z tablicy
 
 ;------------------------------------------------------------------------------
 ; Program end - Ending loop
@@ -173,7 +178,7 @@ rjmp END
 ; Table Declaration -  place here test values
 ; Test with different table values and different begin addresses of table (als above 0x8000)
 ;
-ROMTAB: .db 0xff, 0xf0, 0x10, 0x00, 0x00
+ROMTAB: .db 0xff, 0xf0, 0x42, 0x10, 0x00, 0x00
 .EXIT
 ;------------------------------------------------------------------------------
 

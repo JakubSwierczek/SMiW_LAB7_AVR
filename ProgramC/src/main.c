@@ -8,8 +8,8 @@
 ; Section:	4
 ;
 ; Task:		Kopiowanie z ROM na diody
-;
-; Todo:		
+; Todo:
+; 	- ATmega2560 16 MHz		
 ;	- przyciski na porcie A zwieraj¹ do masy
 ;	- diody na porcie B przez rezystor do masy
 ;	- na koñcu tablicy wartownik - dwie wartoœci 0x00
