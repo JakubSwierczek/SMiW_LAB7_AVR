@@ -218,12 +218,18 @@ in r16, EIMSK
 sbr r16, (1<<INT0)
 out EIMSK, r16
 
-; ustawienie preskalera licznika na 64
-in r16, TCCR0B		
-cbr r16, (1<<CS02)				; wyzeruj bit CS02
-sbr r16, (1<<CS01) | (1<<CS00)	; ustaw bity CS01 i CS00
+; ustawienie preskalera licznika na 8 i trybu licznika na CTC
+in r16, TCCR0B
+; wyzeruj bity CS02, CS00 i WGM02	
+cbr r16, (1<<CS02) | (1<<CS00) | (1<<WGM02)	
+sbr r16, (1<<CS01) 				; ustaw bit CS01
 out TCCR0B, r16					; zapisz now¹ wartoœæ
-; 250 * 64 = 16k -> 1ms przy 16MHz
+in r16, TCCR0A
+cbr r16, (1<<WGM00)				; wyzeruj bit WGM00
+sbr r16, (1<<WGM01)				; ustaw bit WGM01
+out TCCR0A, r16
+
+; 250 * 8 = 4k -> 0.5ms przy 4MHz
 ldi r16, 250
 out OCR0A, r16					; ustawienie wartoœci komparatora
 
@@ -252,16 +258,26 @@ breq End			; napotkanie wartownika -> koniec programu
 WYPISZ_DANE:
 ; ustaw stan pocz¹tkowy licznika
 ldi r16, 0
-out TCNT0, r16		; ustawienie stanu licznika -> 250 zliczeñ
+out TCNT0, r16			; ustawienie stanu licznika -> 250 zliczeñ
+
 ; odblokowanie przerwania dla komparatora A timera 0
 lds r16, TIMSK0
-sbr r16, (1<<OCIE0A); 1 na bicie OCIE0A
+sbr r16, (1<<OCIE0A)	; 1 na bicie OCIE0A
 sts TIMSK0, r16
 
-CZEKAJ_NA_KONIEC_1MS:
+; 2 pêtle oczekiwania po 0,5 ms
+CZEKAJ_NA_KONIEC_1:
 lds r16, FLAGA_LICZNIKA
 cpi r16, 0x00
-breq CZEKAJ_NA_KONIEC_1MS
+breq CZEKAJ_NA_KONIEC_1
+
+clr r16					
+sts FLAGA_LICZNIKA, r16 ; ustaw flagê licznika
+
+CZEKAJ_NA_KONIEC_2:
+lds r16, FLAGA_LICZNIKA
+cpi r16, 0x00
+breq CZEKAJ_NA_KONIEC_2
 
 ; wypisz dane
 out PORTB, r21		; zawartoœæ odczytanego bajtu z tablicy na port B (diody)
@@ -272,6 +288,7 @@ cbr r16, (1<<OCIE0A)	; 0 na bicie OCIE0A
 sts TIMSK0, r16
 clr r16					; ustaw flagê licznika
 sts FLAGA_LICZNIKA, r16
+
 ; pêtla - skok do odczytywania bajtów z tablicy
 rjmp CZYTAJ_PAMIEC		
 

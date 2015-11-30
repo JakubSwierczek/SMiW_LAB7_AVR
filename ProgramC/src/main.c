@@ -9,7 +9,7 @@
 ;
 ; Task:		Kopiowanie z ROM na diody + przerwania
 ; Todo:
-; 	- ATmega2560 16 MHz		
+; 	- ATmega2560 4 MHz		
 ;	- przyciski na porcie A zwieraj¹ do masy
 ;	- diody na porcie B przez rezystor do masy
 ;	- na koñcu tablicy wartownik - dwie wartoœci 0x00
@@ -65,18 +65,26 @@ ISR(INT0_vect)
 //pêtla ustawienia licznika na 1ms i oczekiwania na odliczenie czasu
 void czekaj()
 {
-	//ustawienie preskalera na 64
-	TCCR0B &= ~( (1<<CS02) ); //wyzeruj bitt CS02
-	TCCR0B |= (1<<CS01) | (1<<CS00); //ustaw bity CS01 i CS00
+	//ustawienie preskalera na 8
+	TCCR0B &= ~( (1<<CS02) | (1<<CS00) ); //wyzeruj bit CS02 i CS00
+	TCCR0B |= (1<<CS01); //ustaw bity CS01 
 
-	//250 * 64 = 16k -> 1ms przy 16MHz
-	OCR0A = 250;
-	TCNT0 = 1;
+	//ustawienie tryby licznika na CTC
+	TCCR0B &= ~( (1<<WGM02) );	//0
+	TCCR0A |= (1<<WGM01);		//1
+	TCCR0A &= ~( (1<<WGM00) );	//0
+
+	//250 * 8 = 2k -> 0.5ms przy 4MHz
+	OCR0A = 249;
+	TCNT0 = 0;
 
 	//odblokuj przerwania dla komparatora A timera 0
 	TIMSK0 |= (1<<OCIE0A);
 
 	//czekaj dopóki licznik nie odliczy wymaganej wartoœci
+	while (!flaga_licznika);
+	flaga_licznika = 0x00; //zgaœ flagê licznika
+	//odlicz drugi raz
 	while (!flaga_licznika);
 	flaga_licznika = 0x00; //zgaœ flagê licznika
 
