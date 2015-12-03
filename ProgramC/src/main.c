@@ -28,6 +28,8 @@
 
 //prototypy funkcji
 void wypisz_dane(uint8_t dana);
+void ustaw_licznik(void);
+void startuj_odmierzanie(void);
 uint8_t czytaj_pamiec(const int offset, uint8_t* poprzednia_wartosc, uint8_t* obecna_wartosc);
 
 //testowa tablica w ROMie
@@ -53,7 +55,17 @@ void wypisz_dane(uint8_t dana)
 volatile uint8_t flaga_licznika = 0x00;
 ISR(TIMER0_COMPA_vect)
 {
-	flaga_licznika = 0xFF;
+	//je¿eli pierwszy z dwóch cykli odliczania licznika
+	if (flaga_licznika == 0xFF)
+		flaga_licznika = 0xF0;
+	//jeœli nie pierwszy, to drugi
+	else
+	{
+		//zatrzymaj odliczanie (wy³¹cz przerwanie
+		TIMSK0 &= ~(1<<OCIE0A); //wy³¹cz przerwanie
+		//gasimy flagê blokuj¹c¹
+		flaga_licznika = 0x00;
+	}
 }
 //obs³uga przerwania zewnêtrznego - przycisk startu
 volatile uint8_t flaga_startu = 0x00;
@@ -63,7 +75,7 @@ ISR(INT0_vect)
 }
 
 //pêtla ustawienia licznika na 1ms i oczekiwania na odliczenie czasu
-void czekaj()
+void ustaw_licznik()
 {
 	//ustawienie preskalera na 8
 	TCCR0B &= ~( (1<<CS02) | (1<<CS00) ); //wyzeruj bit CS02 i CS00
@@ -75,23 +87,16 @@ void czekaj()
 	TCCR0A &= ~( (1<<WGM00) );	//0
 
 	//250 * 8 = 2k -> 0.5ms przy 4MHz
-	OCR0A = 249;
+	OCR0A = 245;
 	TCNT0 = 0;
+}
 
+void startuj_odmierzanie()
+ {
+	//wyzeruj licznik
+	TCNT0 = 0; 
 	//odblokuj przerwania dla komparatora A timera 0
 	TIMSK0 |= (1<<OCIE0A);
-
-	//czekaj dopóki licznik nie odliczy wymaganej wartoœci
-	while (!flaga_licznika);
-	flaga_licznika = 0x00; //zgaœ flagê licznika
-	//odlicz drugi raz
-	while (!flaga_licznika);
-	flaga_licznika = 0x00; //zgaœ flagê licznika
-
-	//zatrzymaj licznik
-	TCCR0B &= ~((1<<CS02) | (1<<CS01) | (1<<CS00));
-	TCNT0 = 0x00; //wyzeruj licznik
-	TIMSK0 &= ~(1<<OCIE0A); //wy³¹cz przerwanie
 }
 
 //g³ówna pêtla programu
@@ -118,12 +123,17 @@ int main(void)
 	
 	//czekaj a¿ dowolny przycisk na porcie A zostanie wciœniêty
 	while(PINA == 0xFF);
+
+	//ustaw licznik na odmierzanie 1ms
+	ustaw_licznik();				
 	
 	//dopóki odczyt poprawny (nie jest to wartownik), to wypisz dane i przesuñ wskaŸnik na kolejny bajt tablicy
 	for (int offset = 0; czytaj_pamiec(offset, &poprzednia_wartosc, &obecna_wartosc); offset++)
 	{
-		czekaj(); //odczekaj 1ms pomiêdzy wypisaniem kolejnego bajtu
-		wypisz_dane(obecna_wartosc);
+		while (flaga_licznika);			//czekaj dopóki licznik nie odliczy wymaganej wartoœci
+		flaga_licznika = 0xFF;			//ustaw flagê licznika
+		wypisz_dane(obecna_wartosc);	//wypisz dane na diody
+		startuj_odmierzanie();			//rozpocznij odliczanie 1ms
 	}
 				
 	while(1); //koniec dzia³ania programu

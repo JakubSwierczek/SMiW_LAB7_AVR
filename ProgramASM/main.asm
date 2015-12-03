@@ -165,8 +165,23 @@ my_INT0_ISR : ; IRQ0 Handler
 reti
 
 my_TIM0_COMPA_ISR : ; Timer0 CompareA Handler
-	ser r18
+    in r16, SREG     ; zachowaj rejestr statusu
+	lds r18, FLAGA_LICZNIKA
+	cpi r18, 0xFF
+	brne DRUGA_ITERACJA
+    ldi r18, 0xF0
+    sts FLAGA_LICZNIKA, r18
+    rjmp END_my_TIM0_COMPA_ISR
+DRUGA_ITERACJA:
+    ; zgaœ flagê licznika
+	clr r18
 	sts FLAGA_LICZNIKA, r18
+	; zablokowanie przerwania dla komparatora A timera 0
+	lds r18, TIMSK0
+	cbr r18, (1<<OCIE0A)	; 0 na bicie OCIE0A
+	sts TIMSK0, r18
+END_my_TIM0_COMPA_ISR:
+    out SREG, r16   ; przywróæ rejestr statusu 
 reti
 
 ;//////////////////////////////////////////////////////////////////////////////
@@ -230,7 +245,7 @@ sbr r16, (1<<WGM01)				; ustaw bit WGM01
 out TCCR0A, r16
 
 ; 250 * 8 = 4k -> 0.5ms przy 4MHz
-ldi r16, 250
+ldi r16, 247
 out OCR0A, r16					; ustawienie wartoœci komparatora
 
 ; w³¹czenie przerwañ w programie
@@ -256,6 +271,19 @@ cpi r21, 0x00		; jeœli s¹ takie same to czy nie sa zerami
 breq End			; napotkanie wartownika -> koniec programu
 
 WYPISZ_DANE:
+; pêtle oczekiwania na odliczenie licznika 1ms
+CZEKAJ_NA_KONIEC:
+lds r16, FLAGA_LICZNIKA
+cpi r16, 0x00
+brne CZEKAJ_NA_KONIEC
+
+; wypisz dane
+out PORTB, r21		; zawartoœæ odczytanego bajtu z tablicy na port B (diody)
+
+; ustaw flagê licznika
+ser r16					
+sts FLAGA_LICZNIKA, r16
+
 ; ustaw stan pocz¹tkowy licznika
 ldi r16, 0
 out TCNT0, r16			; ustawienie stanu licznika -> 250 zliczeñ
@@ -264,30 +292,6 @@ out TCNT0, r16			; ustawienie stanu licznika -> 250 zliczeñ
 lds r16, TIMSK0
 sbr r16, (1<<OCIE0A)	; 1 na bicie OCIE0A
 sts TIMSK0, r16
-
-; 2 pêtle oczekiwania po 0,5 ms
-CZEKAJ_NA_KONIEC_1:
-lds r16, FLAGA_LICZNIKA
-cpi r16, 0x00
-breq CZEKAJ_NA_KONIEC_1
-
-clr r16					
-sts FLAGA_LICZNIKA, r16 ; ustaw flagê licznika
-
-CZEKAJ_NA_KONIEC_2:
-lds r16, FLAGA_LICZNIKA
-cpi r16, 0x00
-breq CZEKAJ_NA_KONIEC_2
-
-; wypisz dane
-out PORTB, r21		; zawartoœæ odczytanego bajtu z tablicy na port B (diody)
-
-; wy³¹czanie odliczania
-lds r16, TIMSK0			; wy³¹cz przerwanie od komparatora A licznika 0
-cbr r16, (1<<OCIE0A)	; 0 na bicie OCIE0A
-sts TIMSK0, r16
-clr r16					; ustaw flagê licznika
-sts FLAGA_LICZNIKA, r16
 
 ; pêtla - skok do odczytywania bajtów z tablicy
 rjmp CZYTAJ_PAMIEC		
