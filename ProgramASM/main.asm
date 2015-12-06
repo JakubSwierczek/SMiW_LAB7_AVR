@@ -288,6 +288,10 @@ sts FLAGA_LICZNIKA, r16
 ldi r16, 0
 out TCNT0, r16			; ustawienie stanu licznika -> 250 zliczeñ
 
+; wyczyœæ poprzednie przerwania przed odblokowaniem przerwania
+in r16, TIFR0
+sbr r16, (1<<OCF0A)     ; wyzeruj flagê przerwania
+out TIFR0, r16
 ; odblokowanie przerwania dla komparatora A timera 0
 lds r16, TIMSK0
 sbr r16, (1<<OCIE0A)	; 1 na bicie OCIE0A
